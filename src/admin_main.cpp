@@ -337,7 +337,7 @@ namespace
     opts.set_network(args); // do this first, sets global variable :/
 
     program prog{
-      lws::db::storage::open(command_line::get_arg(args, opts.db_path).c_str(), 0)
+      lws::db::storage::open(command_line::get_arg(args, opts.db_path).c_str(), 0, false)
     };
 
     prog.show_sensitive = command_line::get_arg(args, opts.show_sensitive);
