@@ -63,6 +63,7 @@ namespace
     const command_line::arg_descriptor<std::size_t> scan_threads;
     const command_line::arg_descriptor<std::vector<std::string>> access_controls;
     const command_line::arg_descriptor<bool> external_bind;
+    const command_line::arg_descriptor<bool> auto_accept_requests;
     const command_line::arg_descriptor<unsigned> create_queue_max;
     const command_line::arg_descriptor<std::chrono::minutes::rep> rates_interval;
     const command_line::arg_descriptor<unsigned short> log_level;
@@ -94,6 +95,7 @@ namespace
       , scan_threads{"scan-threads", "Maximum number of threads for account scanning", boost::thread::hardware_concurrency()}
       , access_controls{"access-control-origin", "Specify a whitelisted HTTP control origin domain"}
       , external_bind{"confirm-external-bind", "Allow listening for external connections", false}
+      , auto_accept_requests{"auto-accept-requests", "Automatically accept login account creation and import requests", false}
       , create_queue_max{"create-queue-max", "Set pending create account requests maximum", 10000}
       , rates_interval{"exchange-rate-interval", "Retrieve exchange rates in minute intervals from cryptocompare.com if greater than 0", 0}
       , log_level{"log-level", "Log level [0-4]", 1}
@@ -113,6 +115,7 @@ namespace
       command_line::add_arg(description, scan_threads);
       command_line::add_arg(description, access_controls);
       command_line::add_arg(description, external_bind);
+      command_line::add_arg(description, auto_accept_requests);
       command_line::add_arg(description, create_queue_max);
       command_line::add_arg(description, rates_interval);
       command_line::add_arg(description, log_level);
@@ -129,6 +132,7 @@ namespace
     std::chrono::minutes rates_interval;
     std::size_t scan_threads;
     unsigned create_queue_max;
+    bool auto_accept_requests;
   };
 
   void print_help(std::ostream& out)
@@ -179,6 +183,7 @@ namespace
       std::chrono::minutes{command_line::get_arg(args, opts.rates_interval)},
       command_line::get_arg(args, opts.scan_threads),
       command_line::get_arg(args, opts.create_queue_max),
+      command_line::get_arg(args, opts.auto_accept_requests),
     };
 
     prog.rest_config.threads = std::max(std::size_t(1), prog.rest_config.threads);
@@ -195,7 +200,7 @@ namespace
     std::signal(SIGINT, [] (int) { lws::scanner::stop(); });
 
     boost::filesystem::create_directories(prog.db_path);
-    auto disk = lws::db::storage::open(prog.db_path.c_str(), prog.create_queue_max);
+    auto disk = lws::db::storage::open(prog.db_path.c_str(), prog.create_queue_max, prog.auto_accept_requests);
     auto ctx = lws::rpc::context::make(std::move(prog.daemon_rpc), std::move(prog.daemon_sub), prog.rates_interval);
 
     MINFO("Using monerod ZMQ RPC at " << ctx.daemon_address());

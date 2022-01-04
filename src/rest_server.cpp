@@ -558,6 +558,7 @@ namespace lws
       {
         bool new_request = false;
         bool fulfilled = false;
+        bool accepted = false;
         {
           auto user = open_account(req.creds, disk.clone());
           if (!user)
@@ -587,9 +588,10 @@ namespace lws
         }
 
         if (new_request)
-          MONERO_CHECK(disk.import_request(req.creds.address, db::block_id(from_height)));
+          accepted = disk.import_request(req.creds.address, db::block_id(from_height)).value();
 
-        const char *status = new_request ? "Accepted, waiting for approval" : (fulfilled ? "Approved" : "Waiting for Approval");
+          const char* status = new_request ?
+            "Accepted, waiting for approval" : ((fulfilled || accepted) ? "Approved" : "Waiting for Approval");
         return response{rpc::safe_uint64(0), status, new_request, fulfilled};
       }
     };
@@ -779,7 +781,7 @@ namespace lws
           response.m_response_code = 400;
           response.m_response_comment = "Bad Request";
         }
-        else if (body == lws::error::account_not_found)
+        else if (body == lws::error::account_not_found || body == lws::error::duplicate_request)
         {
           response.m_response_code = 403;
           response.m_response_comment = "Forbidden";
