@@ -549,15 +549,15 @@ namespace lws
 
     struct import_request
     {
-      using request = rpc::account_credentials;
+      using request = rpc::import_request;
       using response = rpc::import_response;
 
-      static expect<response> handle(request req, db::storage disk, rpc::client const&)
+      static expect<response> handle(request req, db::storage disk, rpc::client const &)
       {
         bool new_request = false;
         bool fulfilled = false;
         {
-          auto user = open_account(req, disk.clone());
+          auto user = open_account(req.creds, disk.clone());
           if (!user)
             return user.error();
 
@@ -566,7 +566,7 @@ namespace lws
           else
           {
             const expect<db::request_info> info =
-              user->second.get_request(db::request::import_scan, req.address);
+                user->second.get_request(db::request::import_scan, req.creds.address);
 
             if (!info)
             {
@@ -578,11 +578,16 @@ namespace lws
           }
         } // close reader
 
-        if (new_request)
-          MONERO_CHECK(disk.import_request(req.address, db::block_id(0)));
+        uint64_t from_height = 0;
+        if (req.from_height)
+        {
+          from_height = *req.from_height;
+        }
 
-        const char* status = new_request ?
-          "Accepted, waiting for approval" : (fulfilled ? "Approved" : "Waiting for Approval");
+        if (new_request)
+          MONERO_CHECK(disk.import_request(req.creds.address, db::block_id(from_height)));
+
+        const char *status = new_request ? "Accepted, waiting for approval" : (fulfilled ? "Approved" : "Waiting for Approval");
         return response{rpc::safe_uint64(0), status, new_request, fulfilled};
       }
     };
