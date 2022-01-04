@@ -163,17 +163,23 @@ namespace rpc
   };
   void write_bytes(wire::json_writer&, const get_unspent_outs_response&);
 
+  struct import_request
+  {
+    import_request() = delete;
+    account_credentials creds;
+    boost::optional<uint64_t> from_height;
+  };
+  void read_bytes(wire::json_reader&, import_request&);
 
   struct import_response
   {
     import_response() = delete;
     safe_uint64 import_fee;
-    const char* status;
+    const char *status;
     bool new_request;
     bool request_fulfilled;
   };
-  void write_bytes(wire::json_writer&, const import_response&);
-
+  void write_bytes(wire::json_writer &, const import_response &);
 
   struct login_request
   {

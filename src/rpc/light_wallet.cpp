@@ -301,6 +301,16 @@ namespace lws
     );
   }
 
+  void rpc::read_bytes(wire::json_reader& source, import_request& self)
+  {
+    std::string address;
+    wire::object(source,
+      wire::field("address", std::ref(address)),
+      wire::field("view_key", std::ref(unwrap(unwrap(self.creds.key)))),
+      WIRE_OPTIONAL_FIELD(from_height)
+    );
+    convert_address(address, self.creds.address);
+  }
   void rpc::write_bytes(wire::json_writer& dest, const import_response& self)
   {
     wire::object(dest,
