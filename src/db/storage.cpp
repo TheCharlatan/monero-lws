@@ -794,12 +794,13 @@ namespace db
     return nullptr;
   }
 
-  storage storage::open(const char* path, unsigned create_queue_max)
+  storage storage::open(const char* path, unsigned create_queue_max, bool auto_accept_requests)
   {
     return {
       std::make_shared<storage_internal>(
         MONERO_UNWRAP(lmdb::open_environment(path, 20)), create_queue_max
-      )
+      ),
+      auto_accept_requests
     };
   }
 
@@ -808,7 +809,7 @@ namespace db
 
   storage storage::clone() const noexcept
   {
-    return storage{db};
+    return storage{db, auto_accept_requests};
   }
 
   expect<storage_reader> storage::start_read(lmdb::suspended_txn txn) const
@@ -1383,7 +1384,7 @@ namespace db
     if (!db->create_queue_max)
       return {lws::error::create_queue_max};
 
-    return db->try_write([this, &address, &key, flags] (MDB_txn& txn) -> expect<void>
+    auto res = db->try_write([this, &address, &key, flags] (MDB_txn& txn) -> expect<void>
     {
       const expect<db::account_time> current_time = get_account_time();
       if (!current_time)
@@ -1449,15 +1450,26 @@ namespace db
         return {lws::error::duplicate_request};
       if (err)
         return {lmdb::error(err)};
-
       return success();
     });
+    if (res.has_error()) {
+      return res;
+    }
+
+    if (auto_accept_requests) {
+      const std::vector<lws::db::account_address> addresses = {address};
+      auto res = accept_requests(lws::db::request::create, epee::to_span(addresses));
+      if (res.has_error()) {
+        return res.error();
+      }
+    }
+    return success();
   }
 
-  expect<void> storage::import_request(account_address const& address, block_id height) noexcept
+  expect<bool> storage::import_request(account_address const& address, block_id height) noexcept
   {
     MONERO_PRECOND(db != nullptr);
-    return db->try_write([this, &address, height] (MDB_txn& txn) -> expect<void>
+    auto res = db->try_write([this, &address, height] (MDB_txn& txn) -> expect<bool>
     {
       const expect<db::account_time> current_time = get_account_time();
       if (!current_time)
@@ -1491,9 +1503,21 @@ namespace db
         return {lws::error::duplicate_request};
       if (err)
         return {lmdb::error(err)};
-
-      return success();
+      return false;
     });
+    if (res.has_error()) {
+      return res;
+    }
+
+    if (auto_accept_requests) {
+      const std::vector<lws::db::account_address> addresses = {address};
+      auto res = accept_requests(lws::db::request::import_scan, epee::to_span(addresses));
+      if (res.has_error()) {
+        return res.error();
+      }
+      return true;
+    }
+    return false;
   }
 
   namespace

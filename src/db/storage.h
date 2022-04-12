@@ -141,10 +141,13 @@ namespace db
   class storage
   {
     std::shared_ptr<storage_internal> db;
+    bool auto_accept_requests;
 
-    storage(std::shared_ptr<storage_internal> db) noexcept
+    storage(std::shared_ptr<storage_internal> db, bool auto_accept) noexcept
       : db(std::move(db))
-    {}
+    {
+      auto_accept_requests = auto_accept;
+    }
 
   public:
     /*!
@@ -152,13 +155,15 @@ namespace db
 
       \param path Directory for LMDB storage
       \param create_queue_max Maximum number of create account requests allowed.
+      \param auto_accept_requests Automatically accept account creation / import requests.
 
       \throw std::system_error on any LMDB error (all treated as fatal).
       \throw std::bad_alloc If `std::shared_ptr` fails to allocate.
 
       \return A ready light-wallet server database.
     */
-    static storage open(const char* path, unsigned create_queue_max);
+    static storage open(const char* path, unsigned create_queue_max, bool auto_accept_requests);
+
 
     storage(storage&&) = default;
     storage(storage const&) = delete;
@@ -207,7 +212,7 @@ namespace db
       Request lock height of an existing account. No effect if the `start_height`
       is already older.
     */
-    expect<void> import_request(account_address const& address, block_id height) noexcept;
+    expect<bool> import_request(account_address const& address, block_id height) noexcept;
 
     //! Accept requests by `addresses` of type `req`. \return Accepted addresses.
     expect<std::vector<account_address>>
