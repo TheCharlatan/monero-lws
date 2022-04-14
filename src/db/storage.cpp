@@ -1322,8 +1322,8 @@ namespace db
         return user.error();
 
       const block_id current_height = user->scan_height;
-      user->scan_height = std::min(height, user->scan_height);
-      user->start_height = std::min(height, user->start_height);
+      user->scan_height = height;
+      user->start_height = height;
 
       value = lmdb::to_val(*user);
       MONERO_LMDB_CHECK(
@@ -1336,7 +1336,7 @@ namespace db
       );
       MONERO_LMDB_CHECK(mdb_cursor_del(&accounts_bh_cur, 0));
 
-      key = lmdb::to_val(height);
+      key = lmdb::to_val(user->scan_height);
       value = lmdb::to_val(*lookup);
       MONERO_LMDB_CHECK(
         mdb_cursor_put(&accounts_bh_cur, &key, &value, MDB_NODUPDATA)

@@ -586,7 +586,7 @@ namespace lws
         }
 
         if (new_request)
-          accepted = disk.import_request(req.address, db::block_id(0)).value();
+          accepted = disk.import_request(req.creds.address, db::block_id(0)).value();
 
         const char* status = new_request ?
           "Accepted, waiting for approval" : ((fulfilled || accepted) ? "Approved" : "Waiting for Approval");
