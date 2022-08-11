@@ -83,12 +83,18 @@ pub struct LwsRpcClient {
 }
 
 impl LwsRpcClient {
-    pub fn new(addr: String) -> Self {
+    pub fn new(addr: String, proxy: Option<String>) -> Self {
+        let http_client = if let Some(proxy_address) = proxy {
+            reqwest::Client::builder()
+                .proxy(reqwest::Proxy::all(proxy_address).unwrap())
+                .build()
+                .unwrap()
+        } else {
+            reqwest::ClientBuilder::new().build().unwrap()
+        };
+
         Self {
-            inner: CallerWrapper(Arc::new(RemoteCaller {
-                http_client: reqwest::ClientBuilder::new().build().unwrap(),
-                addr,
-            })),
+            inner: CallerWrapper(Arc::new(RemoteCaller { http_client, addr })),
         }
     }
 
